@@ -1,0 +1,107 @@
+[
+  {
+    "id": 1,
+    "ar": "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
+    "fr": "Notre Seigneur, accorde-nous le bien en ce monde et le bien dans l'au-delà, et préserve-nous du châtiment du Feu.",
+    "en": "Our Lord, grant us good in this world and good in the Hereafter, and protect us from the punishment of the Fire.",
+    "occasion": "general"
+  },
+  {
+    "id": 2,
+    "ar": "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ",
+    "fr": "Ô Allah, je Te demande le pardon et le bien-être en ce monde et dans l'au-delà.",
+    "en": "O Allah, I ask You for pardon and well-being in this world and the Hereafter.",
+    "occasion": "morning_evening"
+  },
+  {
+    "id": 3,
+    "ar": "اللَّهُمَّ أَصْلِحْ لِي دِينِي الَّذِي هُوَ عِصْمَةُ أَمْرِي",
+    "fr": "Ô Allah, rectifie pour moi ma religion qui est la sauvegarde de mes affaires.",
+    "en": "O Allah, set right for me my religion which is the safeguard of my affairs.",
+    "occasion": "general"
+  },
+  {
+    "id": 4,
+    "ar": "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي",
+    "fr": "Seigneur, ouvre-moi la poitrine et facilite-moi ma tâche.",
+    "en": "My Lord, expand for me my breast and ease for me my task.",
+    "occasion": "general"
+  },
+  {
+    "id": 5,
+    "ar": "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ",
+    "fr": "Ô Allah, je me réfugie en Toi contre l'anxiété et la tristesse.",
+    "en": "O Allah, I seek refuge in You from anxiety and sorrow.",
+    "occasion": "distress"
+  },
+  {
+    "id": 6,
+    "ar": "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ",
+    "fr": "Allah nous suffit, et quel excellent Protecteur.",
+    "en": "Allah is sufficient for us, and He is the best Disposer of affairs.",
+    "occasion": "general"
+  },
+  {
+    "id": 7,
+    "ar": "اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ",
+    "fr": "Ô Allah, aide-moi à Te mentionner, à T'être reconnaissant et à T'adorer convenablement.",
+    "en": "O Allah, help me to remember You, give thanks to You, and worship You properly.",
+    "occasion": "after_prayer"
+  },
+  {
+    "id": 8,
+    "ar": "رَبِّ زِدْنِي عِلْمًا",
+    "fr": "Seigneur, accroît ma connaissance.",
+    "en": "My Lord, increase me in knowledge.",
+    "occasion": "knowledge"
+  },
+  {
+    "id": 9,
+    "ar": "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى",
+    "fr": "Ô Allah, je Te demande la guidance, la piété, la chasteté et la suffisance.",
+    "en": "O Allah, I ask You for guidance, piety, chastity and self-sufficiency.",
+    "occasion": "general"
+  },
+  {
+    "id": 10,
+    "ar": "اللَّهُمَّ بَارِكْ لَنَا فِي رِزْقِنَا",
+    "fr": "Ô Allah, bénis notre subsistance.",
+    "en": "O Allah, bless our provision.",
+    "occasion": "provision"
+  },
+  {
+    "id": 11,
+    "ar": "اللَّهُمَّ اغْفِرْ لِي ذَنْبِي كُلَّهُ دِقَّهُ وَجِلَّهُ",
+    "fr": "Ô Allah, pardonne-moi tous mes péchés, les petits et les grands.",
+    "en": "O Allah, forgive me all my sins, the small and the great of them.",
+    "occasion": "forgiveness"
+  },
+  {
+    "id": 12,
+    "ar": "رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ",
+    "fr": "Notre Seigneur, accorde-nous de nos époux et de notre progéniture la joie des yeux.",
+    "en": "Our Lord, grant us from among our spouses and offspring comfort to our eyes.",
+    "occasion": "family"
+  },
+  {
+    "id": 13,
+    "ar": "اللَّهُمَّ إِنِّي أَسْأَلُكَ حُبَّكَ وَحُبَّ مَنْ يُحِبُّكَ",
+    "fr": "Ô Allah, je Te demande Ton amour et l'amour de ceux qui T'aiment.",
+    "en": "O Allah, I ask You for Your love and the love of those who love You.",
+    "occasion": "love"
+  },
+  {
+    "id": 14,
+    "ar": "اللَّهُمَّ إِنِّي ظَلَمْتُ نَفْسِي ظُلْمًا كَثِيرًا وَلَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ",
+    "fr": "Ô Allah, j'ai fait beaucoup de tort à mon âme et personne ne pardonne les péchés sauf Toi.",
+    "en": "O Allah, I have wronged my soul greatly, and none forgives sins except You.",
+    "occasion": "forgiveness"
+  },
+  {
+    "id": 15,
+    "ar": "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْجَنَّةَ وَأَعُوذُ بِكَ مِنَ النَّارِ",
+    "fr": "Ô Allah, je Te demande le Paradis et je me réfugie en Toi contre l'Enfer.",
+    "en": "O Allah, I ask You for Paradise and I seek refuge in You from the Fire.",
+    "occasion": "general"
+  }
+]

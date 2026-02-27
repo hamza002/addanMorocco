@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Modal,
   StyleSheet,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../theme';
@@ -20,6 +21,39 @@ interface CitySelectorProps {
   onClose: () => void;
 }
 
+// Search any city in Morocco via OpenStreetMap Nominatim
+async function searchCitiesOnline(query: string, signal: AbortSignal): Promise<City[]> {
+  const url =
+    `https://nominatim.openstreetmap.org/search` +
+    `?q=${encodeURIComponent(query)}&countrycodes=ma&format=json&limit=8&addressdetails=1`;
+  const resp = await fetch(url, {
+    headers: {'User-Agent': 'PrayTimeMorocco/1.0'},
+    signal,
+  });
+  if (!resp.ok) {return [];}
+  const data: any[] = await resp.json();
+  return data.map(item => {
+    const addr = item.address || {};
+    const cityName =
+      addr.city ||
+      addr.town ||
+      addr.village ||
+      addr.county ||
+      item.name ||
+      query;
+    const region =
+      addr.state || addr.county || addr.region || 'Maroc';
+    return {
+      name: cityName,
+      nameAr: cityName,
+      nameFr: cityName,
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+      region,
+    } as City;
+  });
+}
+
 const CitySelector: React.FC<CitySelectorProps> = ({
   visible,
   currentCityName,
@@ -29,9 +63,14 @@ const CitySelector: React.FC<CitySelectorProps> = ({
   const {colors} = useTheme();
   const {t, i18n} = useTranslation();
   const [search, setSearch] = useState('');
+  const [apiResults, setApiResults] = useState<City[]>([]);
+  const [apiLoading, setApiLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const isRTL = i18n.language === 'ar';
 
-  const filtered = useMemo(() => {
+  // Local filter
+  const localFiltered = useMemo(() => {
     if (!search.trim()) {
       return MOROCCAN_CITIES;
     }
@@ -45,7 +84,60 @@ const CitySelector: React.FC<CitySelectorProps> = ({
     );
   }, [search]);
 
-  const renderItem = ({item}: {item: City}) => {
+  // Debounced Nominatim search — triggers on every keystroke (min 1 char, 350ms delay)
+  useEffect(() => {
+    if (search.trim().length < 1) {
+      setApiResults([]);
+      setApiLoading(false);
+      return;
+    }
+
+    // Cancel previous debounce + in-flight request
+    if (debounceRef.current) {clearTimeout(debounceRef.current);}
+    if (abortRef.current) {abortRef.current.abort();}
+
+    // Show spinner immediately so user knows search is pending
+    setApiLoading(true);
+
+    debounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+      try {
+        const results = await searchCitiesOnline(search.trim(), controller.signal);
+        // De-dup: skip results that overlap with local list
+        const unique = results.filter(
+          r =>
+            !MOROCCAN_CITIES.some(
+              c =>
+                Math.abs(c.lat - r.lat) < 0.05 &&
+                Math.abs(c.lng - r.lng) < 0.05,
+            ),
+        );
+        setApiResults(unique);
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') {
+          setApiResults([]);
+        }
+      } finally {
+        setApiLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      if (debounceRef.current) {clearTimeout(debounceRef.current);}
+      if (abortRef.current) {abortRef.current.abort();}
+    };
+  }, [search]);
+
+  // Combined list: local results first, then online results
+  const combined: Array<City & {_online?: boolean}> = useMemo(() => {
+    return [
+      ...localFiltered,
+      ...apiResults.map(c => ({...c, _online: true})),
+    ];
+  }, [localFiltered, apiResults]);
+
+  const renderItem = ({item}: {item: City & {_online?: boolean}}) => {
     const isSelected = item.name === currentCityName;
     const displayName = getCityName(item, i18n.language);
     return (
@@ -61,11 +153,19 @@ const CitySelector: React.FC<CitySelectorProps> = ({
         onPress={() => {
           onSelect(item);
           setSearch('');
+          setApiResults([]);
         }}>
         <View style={{flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start'}}>
-          <Text style={[styles.cityName, {color: colors.text, textAlign: isRTL ? 'right' : 'left'}]}>
-            {displayName}
-          </Text>
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+            <Text style={[styles.cityName, {color: colors.text, textAlign: isRTL ? 'right' : 'left'}]}>
+              {displayName}
+            </Text>
+            {item._online && (
+              <View style={[styles.onlineBadge, {backgroundColor: colors.primary + '22'}]}>
+                <Text style={[styles.onlineBadgeText, {color: colors.primary}]}>🌐</Text>
+              </View>
+            )}
+          </View>
           <Text style={[styles.regionName, {color: colors.textMuted, textAlign: isRTL ? 'right' : 'left'}]}>
             {item.region}
           </Text>
@@ -109,8 +209,11 @@ const CitySelector: React.FC<CitySelectorProps> = ({
             autoCapitalize="none"
             textAlign={isRTL ? 'right' : 'left'}
           />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
+          {apiLoading && (
+            <ActivityIndicator size="small" color={colors.primary} style={{marginRight: 4}} />
+          )}
+          {search.length > 0 && !apiLoading && (
+            <TouchableOpacity onPress={() => {setSearch(''); setApiResults([]);}}>
               <Text style={{color: colors.textMuted, fontSize: 18}}>✕</Text>
             </TouchableOpacity>
           )}
@@ -118,8 +221,8 @@ const CitySelector: React.FC<CitySelectorProps> = ({
 
         {/* List */}
         <FlatList
-          data={filtered}
-          keyExtractor={item => item.name}
+          data={combined}
+          keyExtractor={(item, idx) => `${item.name}-${item.lat}-${idx}`}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="always"
@@ -189,6 +292,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginLeft: 8,
+  },
+  onlineBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  onlineBadgeText: {
+    fontSize: 11,
   },
 });
 

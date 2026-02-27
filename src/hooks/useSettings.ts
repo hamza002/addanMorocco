@@ -5,7 +5,7 @@ import {I18nManager} from 'react-native';
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>({
-    language: 'fr',
+    language: 'ar' as const,
     darkMode: false,
     notificationsEnabled: true,
     useGPS: false,

@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '../theme';
-import {LANGUAGES, LanguageCode} from '../i18n';
+
 import {loadSettings, saveSettings} from '../storage/settings';
-import {cancelAllNotifications} from '../notifications';
+import {cancelAllNotifications, scheduleDailyHadithNotification, cancelHadithNotification} from '../notifications';
 
 const PRAYER_KEYS = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
@@ -22,6 +22,7 @@ const SettingsScreen: React.FC = () => {
   const isRTL = i18n.language === 'ar';
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [hadithNotifEnabled, setHadithNotifEnabled] = useState(true);
   const [notifPrayers, setNotifPrayers] = useState<Record<string, boolean>>({
     fajr: true,
     sunrise: false,
@@ -34,6 +35,7 @@ const SettingsScreen: React.FC = () => {
   useEffect(() => {
     loadSettings().then(s => {
       setNotificationsEnabled(s.notificationsEnabled !== false);
+      setHadithNotifEnabled(s.hadithNotifEnabled !== false);
       if (s.notificationPrayers) {
         setNotifPrayers(s.notificationPrayers);
       }
@@ -41,14 +43,6 @@ const SettingsScreen: React.FC = () => {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleLanguageChange = useCallback(
-    async (lang: LanguageCode) => {
-      await i18n.changeLanguage(lang);
-      await saveSettings({language: lang});
-    },
-    [i18n],
-  );
 
   const handleDarkModeToggle = useCallback(
     (val: boolean) => {
@@ -64,6 +58,16 @@ const SettingsScreen: React.FC = () => {
       await cancelAllNotifications();
     }
   }, []);
+
+  const handleHadithNotifToggle = useCallback(async (val: boolean) => {
+    setHadithNotifEnabled(val);
+    await saveSettings({hadithNotifEnabled: val});
+    if (val) {
+      await scheduleDailyHadithNotification(i18n.language);
+    } else {
+      await cancelHadithNotification();
+    }
+  }, [i18n.language]);
 
   const handlePrayerNotifToggle = useCallback(
     async (prayer: string, val: boolean) => {
@@ -164,57 +168,6 @@ const SettingsScreen: React.FC = () => {
           />
         </View>
 
-        {/* ─── LANGUAGE ─── */}
-        <SectionHeader title={t('language')} />
-        <View style={[styles.card, {backgroundColor: colors.card, borderColor: colors.cardBorder}]}>
-          {(Object.entries(LANGUAGES) as [LanguageCode, typeof LANGUAGES.en][]).map(
-            ([code, lang], index) => {
-              const isSelected = i18n.language === code;
-              const isLast = index === Object.keys(LANGUAGES).length - 1;
-              return (
-                <TouchableOpacity
-                  key={code}
-                  style={[
-                    styles.row,
-                    {
-                      backgroundColor: isSelected ? colors.highlight : colors.card,
-                      borderBottomColor: colors.separator,
-                      borderBottomWidth: isLast ? 0 : 0.5,
-                      flexDirection: isRTL ? 'row-reverse' : 'row',
-                    },
-                  ]}
-                  onPress={() => handleLanguageChange(code)}>
-                  <Text
-                    style={[
-                      styles.rowLabelText,
-                      {
-                        color: isSelected ? colors.primary : colors.text,
-                        fontWeight: isSelected ? '700' : '400',
-                        flex: 1,
-                        textAlign: isRTL ? 'right' : 'left',
-                      },
-                    ]}>
-                    {lang.nativeLabel}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.rowLabelText,
-                      {color: colors.textMuted},
-                    ]}>
-                    {lang.label}
-                  </Text>
-                  {isSelected && (
-                    <Text
-                      style={[styles.checkmark, {color: colors.primary}]}>
-                      {' '}✓
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            },
-          )}
-        </View>
-
         {/* ─── NOTIFICATIONS ─── */}
         <SectionHeader title={t('notifications')} />
         <View style={[styles.card, {backgroundColor: colors.card, borderColor: colors.cardBorder}]}>
@@ -273,6 +226,23 @@ const SettingsScreen: React.FC = () => {
           )}
         </View>
 
+        {/* ─── HADITH NOTIF ─── */}
+        <SectionHeader title={t('hadithNotif')} />
+        <View style={[styles.card, {backgroundColor: colors.card, borderColor: colors.cardBorder}]}>
+          <SettingRow
+            label={t('hadithNotifEnabled')}
+            subtitle={'كل يوم الساعة 8:00'}
+            right={
+              <Switch
+                value={hadithNotifEnabled}
+                onValueChange={handleHadithNotifToggle}
+                trackColor={{false: colors.switchTrack, true: colors.primaryLight}}
+                thumbColor={colors.switchThumb}
+              />
+            }
+          />
+        </View>
+
         {/* ─── ABOUT ─── */}
         <SectionHeader title={t('about')} />
         <View
@@ -292,6 +262,7 @@ const SettingsScreen: React.FC = () => {
             Muslim World League Method
           </Text>
         </View>
+
       </ScrollView>
     </View>
   );

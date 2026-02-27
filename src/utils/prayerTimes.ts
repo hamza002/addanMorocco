@@ -1,13 +1,10 @@
-import {
-  Coordinates,
-  CalculationMethod,
-  PrayerTimes,
-  Prayer,
-  Madhab,
-  CalculationParameters,
-} from 'adhan';
+// Aladhan API — supports global calculation methods
+const ALADHAN_BASE = 'https://api.aladhan.com/v1';
+/** Default method (Muslim World League) used as fallback */
+export const DEFAULT_METHOD = 3;
 
 export interface PrayerTimesResult {
+  imsak: Date;
   fajr: Date;
   sunrise: Date;
   dhuhr: Date;
@@ -36,40 +33,93 @@ export const PRAYER_ICONS: Record<PrayerName, string> = {
   isha: '🌃',
 };
 
-export function getPrayerTimes(
+function formatDateForApi(date: Date): string {
+  const d = date.getDate().toString().padStart(2, '0');
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}-${m}-${y}`;
+}
+
+function timeStrToDate(timeStr: string, refDate: Date): Date {
+  // Remove timezone suffix if present (e.g. "05:44 (+01)" → "05:44")
+  const clean = timeStr.split(' ')[0];
+  const [h, min] = clean.split(':').map(Number);
+  const d = new Date(refDate);
+  d.setHours(h, min, 0, 0);
+  return d;
+}
+
+export async function getPrayerTimes(
   lat: number,
   lng: number,
   date: Date,
-): PrayerTimesResult {
-  const coordinates = new Coordinates(lat, lng);
+  method: number = DEFAULT_METHOD,
+): Promise<PrayerTimesResult> {
+  const dateStr = formatDateForApi(date);
+  const url =
+    `${ALADHAN_BASE}/timings/${dateStr}` +
+    `?latitude=${lat}&longitude=${lng}&method=${method}`;
 
-  // Muslim World League method - used for Morocco
-  const params: CalculationParameters = CalculationMethod.MuslimWorldLeague();
-  // Morocco follows Maliki madhab (Standard shadow length)
-  params.madhab = Madhab.Shafi;
-
-  const prayerTimes = new PrayerTimes(coordinates, date, params);
-
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    throw new Error(`Aladhan API error: ${resp.status}`);
+  }
+  const json = await resp.json();
+  if (json.code !== 200) {
+    throw new Error(json.status || 'Aladhan API error');
+  }
+  const t = json.data.timings;
   return {
-    fajr: prayerTimes.fajr,
-    sunrise: prayerTimes.sunrise,
-    dhuhr: prayerTimes.dhuhr,
-    asr: prayerTimes.asr,
-    maghrib: prayerTimes.maghrib,
-    isha: prayerTimes.isha,
+    imsak: timeStrToDate(t.Imsak, date),
+    fajr: timeStrToDate(t.Fajr, date),
+    sunrise: timeStrToDate(t.Sunrise, date),
+    dhuhr: timeStrToDate(t.Dhuhr, date),
+    asr: timeStrToDate(t.Asr, date),
+    maghrib: timeStrToDate(t.Maghrib, date),
+    isha: timeStrToDate(t.Isha, date),
   };
+}
+
+/**
+ * Fetch 7 consecutive days of prayer times starting from `startDate`.
+ * Returns a Map of "DD-MM-YYYY" → PrayerTimesResult.
+ */
+export async function getPrayerTimesWeek(
+  lat: number,
+  lng: number,
+  startDate: Date,
+  method: number = DEFAULT_METHOD,
+): Promise<Map<string, PrayerTimesResult>> {
+  const results = new Map<string, PrayerTimesResult>();
+  // Fetch each day individually (Aladhan free tier is generous per day)
+  // We do them in parallel for speed
+  const promises: Promise<void>[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    const dateStr = formatDateForApi(d);
+    promises.push(
+      getPrayerTimes(lat, lng, d, method).then(times => {
+        results.set(dateStr, times);
+      }),
+    );
+  }
+  await Promise.all(promises);
+  return results;
 }
 
 export function getNextPrayer(
   prayerTimes: PrayerTimesResult,
   now: Date,
-): {name: PrayerName; time: Date} | null {
+): {name: PrayerName; time: Date} {
   for (const name of PRAYER_NAMES) {
     if (prayerTimes[name] > now) {
       return {name, time: prayerTimes[name]};
     }
   }
-  return null; // After isha — next is fajr tomorrow
+  // After Isha — estimate tomorrow's Fajr (today's Fajr + 24h)
+  const tomorrowFajr = new Date(prayerTimes.fajr.getTime() + 24 * 60 * 60 * 1000);
+  return {name: 'fajr', time: tomorrowFajr};
 }
 
 export function formatTime(date: Date): string {

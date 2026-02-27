@@ -8,12 +8,15 @@ import React from 'react';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {ThemeProvider} from './src/theme';
 import AppNavigator from './src/navigation/AppNavigator';
+import {AdProvider} from './src/ads/AdContext';
 
 function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppNavigator />
+        <AdProvider>
+          <AppNavigator />
+        </AdProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
