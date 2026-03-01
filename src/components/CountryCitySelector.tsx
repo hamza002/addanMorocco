@@ -38,7 +38,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** Search cities in a given country via Nominatim */
+/** Search cities directly from Nominatim API (returns Arabic names too) */
 async function searchCitiesOnline(
   query: string,
   countryCode: string,
@@ -47,7 +47,7 @@ async function searchCitiesOnline(
   const url =
     `https://nominatim.openstreetmap.org/search` +
     `?q=${encodeURIComponent(query)}&countrycodes=${countryCode.toLowerCase()}` +
-    `&format=json&limit=8&addressdetails=1`;
+    `&format=json&limit=15&addressdetails=1&namedetails=1`;
   try {
     const resp = await fetch(url, {
       headers: {'User-Agent': 'PrayTimesWorld/2.0'},
@@ -55,16 +55,28 @@ async function searchCitiesOnline(
     });
     if (!resp.ok) {return [];}
     const data: any[] = await resp.json();
-    return data.map(item => {
+    const seen = new Set<string>();
+    const results: WorldCity[] = [];
+    for (const item of data) {
       const addr = item.address || {};
+      const details = item.namedetails || {};
       const name =
         addr.city || addr.town || addr.village || addr.county || item.name || query;
-      return {
+      const nameAr: string | undefined =
+        details['name:ar'] ||
+        (addr['city:ar'] || addr['town:ar'] || addr['village:ar']) ||
+        undefined;
+      const key = name.toLowerCase();
+      if (seen.has(key)) {continue;}
+      seen.add(key);
+      results.push({
         name,
+        nameAr,
         lat: parseFloat(item.lat),
         lng: parseFloat(item.lon),
-      } as WorldCity;
-    });
+      } as WorldCity);
+    }
+    return results;
   } catch {
     return [];
   }
@@ -123,14 +135,7 @@ const CountryCitySelector: React.FC<Props> = ({
     );
   }, [countrySearch]);
 
-  // Filtered local cities
-  const filteredCities = useMemo(() => {
-    if (!citySearch.trim()) {return selectedCountry.cities;}
-    const q = citySearch.toLowerCase();
-    return selectedCountry.cities.filter(c => c.name.toLowerCase().includes(q));
-  }, [citySearch, selectedCountry]);
-
-  // Debounced Nominatim city search
+  // Debounced Nominatim city search — API is the single source of truth when typing
   useEffect(() => {
     if (step !== 'city') {return;}
     if (citySearch.trim().length < 2) {
@@ -146,13 +151,9 @@ const CountryCitySelector: React.FC<Props> = ({
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       const results = await searchCitiesOnline(citySearch, selectedCountry.code, ctrl.signal);
-      // De-dup with local list
-      const unique = results.filter(
-        r => !selectedCountry.cities.some(c => Math.abs(c.lat - r.lat) < 0.05 && Math.abs(c.lng - r.lng) < 0.05),
-      );
-      setOnlineCities(unique);
+      setOnlineCities(results);
       setOnlineLoading(false);
-    }, 350);
+    }, 400);
 
     return () => {
       if (debounceRef.current) {clearTimeout(debounceRef.current);}
@@ -170,8 +171,9 @@ const CountryCitySelector: React.FC<Props> = ({
 
   const handleSelectCity = useCallback(
     (city: WorldCity) => {
+      const displayName = (lang === 'ar' && city.nameAr) ? city.nameAr : city.name;
       onSelect({
-        cityName: city.name,
+        cityName: displayName,
         lat: city.lat,
         lng: city.lng,
         countryCode: selectedCountry.code,
@@ -184,10 +186,13 @@ const CountryCitySelector: React.FC<Props> = ({
     [selectedCountry, lang, onSelect],
   );
 
-  const combinedCities: Array<WorldCity & {_online?: boolean}> = useMemo(() => [
-    ...filteredCities,
-    ...onlineCities.map(c => ({...c, _online: true as boolean})),
-  ], [filteredCities, onlineCities]);
+  // When typing → show only API results; when empty → show local quick picks
+  const combinedCities: Array<WorldCity & {_online?: boolean}> = useMemo(() => {
+    if (citySearch.trim().length >= 2) {
+      return onlineCities.map(c => ({...c, _online: true as boolean}));
+    }
+    return selectedCountry.cities;
+  }, [citySearch, onlineCities, selectedCountry]);
 
   const renderCountryItem = ({item}: {item: Country}) => {
     const isSelected = item.code === selectedCountry.code;
@@ -219,6 +224,8 @@ const CountryCitySelector: React.FC<Props> = ({
 
   const renderCityItem = ({item}: {item: WorldCity & {_online?: boolean}}) => {
     const isSelected = item.name === currentCityName;
+    const displayName = isRTL && item.nameAr ? item.nameAr : item.name;
+    const subName = isRTL && item.nameAr ? item.name : undefined;
     return (
       <TouchableOpacity
         style={[
@@ -231,16 +238,14 @@ const CountryCitySelector: React.FC<Props> = ({
         ]}
         onPress={() => handleSelectCity(item)}>
         <View style={{flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start'}}>
-          <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-            <Text style={[styles.itemName, {color: colors.text, textAlign: isRTL ? 'right' : 'left'}]}>
-              {item.name}
+          <Text style={[styles.itemName, {color: colors.text, textAlign: isRTL ? 'right' : 'left'}]}>
+            {displayName}
+          </Text>
+          {subName && (
+            <Text style={[styles.itemSub, {color: colors.textMuted, textAlign: 'right'}]}>
+              {subName}
             </Text>
-            {item._online && (
-              <View style={[styles.badge, {backgroundColor: colors.primary + '22'}]}>
-                <Text style={[styles.badgeText, {color: colors.primary}]}>🌐</Text>
-              </View>
-            )}
-          </View>
+          )}
         </View>
         {isSelected && <Text style={[styles.check, {color: colors.primary}]}>✓</Text>}
       </TouchableOpacity>
@@ -336,7 +341,7 @@ const CountryCitySelector: React.FC<Props> = ({
             ListEmptyComponent={
               !onlineLoading ? (
                 <Text style={[styles.emptyText, {color: colors.textMuted}]}>
-                  {t('noCitiesFound')}
+                  {citySearch.trim().length >= 2 ? t('noCitiesFound') : ''}
                 </Text>
               ) : null
             }
