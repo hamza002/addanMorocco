@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {View, StyleSheet} from 'react-native';
 import {BannerAd, BannerAdSize} from 'react-native-google-mobile-ads';
 
@@ -11,16 +11,27 @@ const AdBanner: React.FC<AdBannerProps> = ({
   unitId,
   size = BannerAdSize.ANCHORED_ADAPTIVE_BANNER,
 }) => {
-  const [loaded, setLoaded] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Defer mounting after launch to avoid blocking the UI thread
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
-    <View style={[styles.container, !loaded && styles.hidden]}>
+    <View style={[styles.container, !visible && styles.hidden]}>
       <BannerAd
         unitId={unitId}
         size={size}
         requestOptions={{requestNonPersonalizedAdsOnly: false}}
-        onAdLoaded={() => setLoaded(true)}
-        onAdFailedToLoad={() => setLoaded(false)}
+        onAdLoaded={() => setVisible(true)}
+        onAdFailedToLoad={() => setVisible(false)}
       />
     </View>
   );
